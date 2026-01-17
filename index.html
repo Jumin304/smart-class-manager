@@ -233,12 +233,12 @@
         <h3><span class="step-tag">Step 0</span> 학급 수 설정</h3>
         <div class="config-box" id="config-box-ui">
             <div class="class-count-grid">
-                <div class="class-count-item"><span>1학년</span><input type="number" id="cc-1" class="cc-input" value="2"></div>
-                <div class="class-count-item"><span>2학년</span><input type="number" id="cc-2" class="cc-input" value="2"></div>
-                <div class="class-count-item"><span>3학년</span><input type="number" id="cc-3" class="cc-input" value="2"></div>
-                <div class="class-count-item"><span>4학년</span><input type="number" id="cc-4" class="cc-input" value="2"></div>
-                <div class="class-count-item"><span>5학년</span><input type="number" id="cc-5" class="cc-input" value="2"></div>
-                <div class="class-count-item"><span>6학년</span><input type="number" id="cc-6" class="cc-input" value="2"></div>
+                <div class="class-count-item"><span>1학년</span><input type="number" id="cc-1" class="cc-input" value="2" min="1" onchange="if(this.value<1)this.value=1"></div>
+                <div class="class-count-item"><span>2학년</span><input type="number" id="cc-2" class="cc-input" value="2" min="1" onchange="if(this.value<1)this.value=1"></div>
+                <div class="class-count-item"><span>3학년</span><input type="number" id="cc-3" class="cc-input" value="2" min="1" onchange="if(this.value<1)this.value=1"></div>
+                <div class="class-count-item"><span>4학년</span><input type="number" id="cc-4" class="cc-input" value="2" min="1" onchange="if(this.value<1)this.value=1"></div>
+                <div class="class-count-item"><span>5학년</span><input type="number" id="cc-5" class="cc-input" value="2" min="1" onchange="if(this.value<1)this.value=1"></div>
+                <div class="class-count-item"><span>6학년</span><input type="number" id="cc-6" class="cc-input" value="2" min="1" onchange="if(this.value<1)this.value=1"></div>
             </div>
             <button id="btn-config-lock" class="btn-lock save-mode" onclick="toggleConfigLock()">💾 학급 수 저장</button>
         </div>
@@ -509,7 +509,10 @@
     function toggleConfigLock() {
         if (!config.isLocked) {
             for(let i=1; i<=6; i++) {
-                config.classes[i] = parseInt(document.getElementById(`cc-${i}`).value) || 1;
+                let val = parseInt(document.getElementById(`cc-${i}`).value);
+                // [수정] 1 미만 값 방지 로직 강화
+                if (val < 1 || isNaN(val)) val = 1; 
+                config.classes[i] = val;
             }
             config.isLocked = true;
         } else {
