@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스마트 수업 매니저</title>
+    <style>
+        :root {
+            --primary: #5c7cfa;
+            --primary-dark: #4263eb;
+            --bg: #f8f9fa;
+            --text: #343a40;
+            --yellow: #ffd43b; 
+            --yellow-hover: #fcc419;
+            --success: #37b24d;
+            --dark: #343a40;
+            --danger: #fa5252;
+            --gray: #868e96;
+            --border: #dee2e6;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        body { margin: 0; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
+        
+        /* Sidebar */
+        .sidebar { width: 400px; background: white; border-right: 1px solid var(--border); padding: 18px; display: flex; flex-direction: column; gap: 15px; box-shadow: 4px 0 10px rgba(0,0,0,0.03); z-index: 10; overflow-y: auto; }
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: white; position: relative; }
+        .grid-container { flex: 1; overflow: auto; padding: 25px; background: #f1f3f5; }
+
+        h3 { margin: 0 0 10px 0; font-size: 0.95rem; color: #495057; display: flex; align-items: center; gap: 6px; }
+        .step-tag { padding: 3px 8px; background: #495057; color: white; border-radius: 4px; font-size: 0.75rem; }
+        .divider { border-bottom: 1px solid #eee; margin: 5px 0; }
+        
+        /* Inputs */
+        .config-box { background: #eef2ff; padding: 12px; border-radius: 8px; border: 1px solid #dae0ff; transition: 0.3s; }
+        .config-box.locked { background: #f1f3f5; border-color: #dee2e6; opacity: 0.9; }
+        
+        .class-count-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+        .class-count-item { display: flex; flex-direction: column; align-items: center; background: white; padding: 6px 2px; border-radius: 6px; border: 1px solid #ccd5ff; }
+        .config-box.locked .class-count-item { background: #e9ecef; border-color: #dee2e6; }
+
+        .cc-input { width: 100%; text-align: center; border: none; font-size: 1rem; font-weight: bold; outline: none; background: transparent; }
+        .cc-input:disabled { color: #868e96; cursor: not-allowed; }
+
+        /* Lock Button */
+        .btn-lock { width: 100%; margin-top: 8px; padding: 8px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 5px; }
+        .btn-lock.save-mode { background: #339af0; color: white; }
+        .btn-lock.save-mode:hover { background: #228be6; }
+        .btn-lock.edit-mode { background: #868e96; color: white; }
+        .btn-lock.edit-mode:hover { background: #495057; }
+
+        /* Subject List */
+        .subject-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; border: 1px solid #e9ecef; padding: 6px; border-radius: 8px; background: #fdfdfd; }
+        .subject-item { padding: 10px; border: 1px solid #eee; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: white; }
+        .subject-item.active { border: 1px solid var(--primary); background-color: #edf2ff; box-shadow: inset 3px 0 0 var(--primary); }
+        .color-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid rgba(0,0,0,0.1); }
+
+        .add-subject-box { background: white; padding: 15px; border-radius: 10px; border: 1px solid #e9ecef; position: relative; }
+        
+        /* Buttons */
+        .btn-new { width:100%; margin-top:10px; background: white; color: var(--text); border: 1px solid #adb5bd; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9rem; transition: 0.2s; display:flex; align-items:center; justify-content:center; gap:5px; }
+        .btn-new:hover { background: #f1f3f5; }
+        
+        .btn-save-sub { width:100%; background: var(--yellow); color: #212529; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 800; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(255, 212, 59, 0.4); transition: 0.2s; }
+        .btn-save-sub:hover { background: var(--yellow-hover); transform: translateY(-1px); }
+
+        .btn-copy { width:100%; background: var(--yellow); color: #212529; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 800; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(255, 212, 59, 0.4); transition: 0.2s; margin-bottom: 10px; }
+        .btn-copy:hover { background: var(--yellow-hover); transform: translateY(-1px); }
+
+        .input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+        input[type="text"] { padding: 9px; border: 1px solid #ced4da; border-radius: 5px; width: 100%; }
+        input[type="color"] { width: 45px; height: 38px; border: 1px solid #dee2e6; border-radius: 5px; cursor: pointer; padding: 0; background: white; }
+
+        /* Global Day Control */
+        .global-day-box { margin-bottom: 10px; padding: 8px; background: #f1f3f5; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+        .global-label { font-size: 0.8rem; font-weight: bold; color: var(--dark); }
+        .global-day-group { display: flex; gap: 4px; }
+        .g-day-btn { width: 28px; height: 28px; border-radius: 4px; border: 1px solid #adb5bd; background: white; color: #868e96; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; transition:0.1s; }
+        .g-day-btn.selected { background: var(--dark); color: white; border-color: var(--dark); }
+
+        /* Target Grid with Days */
+        .target-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+        .target-row { display: flex; align-items: center; background: #f8f9fa; padding: 6px; border-radius: 5px; border: 1px solid #dee2e6; justify-content: space-between; }
+        .target-label { font-size: 0.85rem; font-weight: bold; width: 40px; text-align:center; }
+        .target-input { width: 40px; border: 1px solid #ced4da; text-align: center; border-radius: 4px; padding: 4px; font-weight: bold; margin-right: 8px; }
+        .target-input:invalid { border-color: var(--danger); }
+
+        .day-group { display: flex; gap: 2px; }
+        .day-btn { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #ced4da; background: white; color: #adb5bd; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; font-weight: bold; }
+        .day-btn.selected { background: var(--primary); color: white; border-color: var(--primary); }
+        .day-btn:hover { border-color: var(--primary); }
+        
+        .day-btn.disabled { opacity: 0.3; cursor: not-allowed; background: #e9ecef; border-color: #dee2e6; color: #adb5bd; pointer-events: none; }
+
+        /* Semester Options */
+        .semester-control { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
+        .semester-select { border: 1px solid #4b6cb7; color:#4b6cb7; font-weight:bold; border-radius: 4px; padding: 5px; font-size: 0.9rem; cursor: pointer; outline:none; background:white; width: 100%; }
+        .date-picker-row { display: none; align-items: center; gap: 5px; font-size: 0.8rem; background: #e7f5ff; padding: 5px; border-radius: 4px; }
+        .date-picker-row.active { display: flex; }
+
+        /* Main Buttons */
+        .btn-big-auto { width: 100%; background: var(--success); color: white; border: none; padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 8px; }
+        .btn-big-auto:hover { background: #2b8a3e; }
+
+        .btn-open-popup { width: 100%; background: #5c7cfa; color: white; border: none; padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+        
+        .footer-actions { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 15px; border-top: 1px solid #eee; }
+        .btn-save { width: 100%; background: #343a40; color: white; padding: 12px; border-radius:6px; cursor:pointer; font-weight:bold; border:none; }
+        .btn-reset { width: 100%; background: white; color: #e03131; border: 1px solid #ffc9c9; padding: 10px; border-radius:6px; cursor:pointer; font-weight:bold; }
+
+        /* Table */
+        table { border-collapse: separate; border-spacing: 0; width: 100%; background: white; table-layout: fixed; border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6; }
+        th, td { border-bottom: 1px solid #dee2e6; border-right: 1px solid #dee2e6; text-align: center; height: 42px; font-size: 0.85rem; }
+        th { background: #f8f9fa; font-weight: 700; position: sticky; top: 0; z-index: 5; height: 35px; }
+        td:first-child, th:first-child { position: sticky; left: 0; background: #f1f3f5; z-index: 6; width: 90px; font-weight: bold; border-right: 2px solid #ced4da; }
+        
+        .empty-cell { cursor: pointer; transition: background 0.1s; }
+        .empty-cell:hover { background: #f1f3f5; }
+        
+        .master-cell { 
+            font-size: 0.7rem; 
+            font-weight: 700; 
+            color: #fff; 
+            text-shadow: 0 1px 1px rgba(0,0,0,0.1); 
+            cursor: pointer; 
+            width: 100%; 
+            height: 100%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: 0.1s;
+            white-space: nowrap; 
+            overflow: hidden; 
+        }
+        .master-cell:hover { transform:scale(1.05); z-index:10; }
+
+        /* Context Menu */
+        #context-menu { display: none; position: fixed; background: white; border: 1px solid #ccc; box-shadow: 2px 2px 10px rgba(0,0,0,0.2); z-index: 2000; border-radius: 6px; overflow: hidden; width: 120px; }
+        .ctx-item { padding: 10px; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid #eee; text-align: center; }
+        .ctx-item:last-child { border-bottom: none; color: #e03131; }
+        .ctx-item:hover { background: #f8f9fa; }
+
+        /* Modal Enhanced */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal-window { width: 92%; height: 95%; background: #f8f9fa; border-radius: 16px; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.2); overflow: hidden; }
+        
+        .modal-header { padding: 12px 20px; background: white; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .modal-header strong { font-size: 1.1rem; color: #333; }
+        .btn-close { cursor: pointer; background: #f1f3f5; border: none; padding: 6px 12px; border-radius: 15px; color: #555; font-weight: bold; transition: 0.2s; font-size: 0.8rem; }
+        .btn-close:hover { background: #e9ecef; color: #333; }
+
+        .modal-body { flex: 1; display: flex; overflow: hidden; }
+        
+        /* Modal Sidebar (Grade/Class Selector) */
+        .modal-sidebar { width: 220px; background: white; border-right: 1px solid #eee; padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; flex-shrink: 0; }
+        .modal-section-title { font-size: 0.8rem; text-transform: uppercase; color: #adb5bd; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.5px; }
+        
+        .grade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .selector-btn {
+            padding: 10px;
+            border: 1px solid #eee;
+            background: #fff;
+            color: #495057;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .selector-btn:hover { background: #f8f9fa; transform: translateY(-1px); }
+        .selector-btn.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 2px 5px rgba(92, 124, 250, 0.3); }
+
+        .class-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .class-btn {
+            width: 45px; height: 45px;
+            border: 1px solid #eee;
+            background: #fff;
+            color: #495057;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1rem;
+            transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .class-btn:hover { background: #f8f9fa; }
+        .class-btn.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 2px 5px rgba(92, 124, 250, 0.3); transform: scale(1.05); }
+
+        /* Modal Content (Compact) */
+        .modal-content { flex: 1; padding: 15px; overflow: hidden; display: flex; flex-direction: column; }
+        .modal-content-title { font-size: 1.2rem; font-weight: 800; color: #343a40; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .modal-content-title span { font-size: 0.9rem; color: #868e96; font-weight: normal; background: #fff; padding: 2px 8px; border-radius: 15px; border: 1px solid #eee; }
+
+        .class-table-wrapper { flex: 1; background: white; border-radius: 8px; box-shadow: var(--shadow); overflow-y: auto; border: 1px solid #eee; position: relative; }
+        
+        /* Compact Table for Modal */
+        #class-table { width: 100%; border-collapse: separate; table-layout: fixed; }
+        #class-table thead th { position: sticky; top: 0; background: #f8f9fa; z-index: 10; padding: 6px; font-size: 0.8rem; height: 30px; border-bottom: 1px solid #dee2e6; }
+        #class-table tbody td { 
+            height: 32px; /* Reduced height for compactness */
+            padding: 2px 4px; 
+            font-size: 0.75rem; 
+            border-bottom: 1px solid #f1f3f5; 
+            border-right: 1px solid #f1f3f5; 
+            vertical-align: middle;
+        }
+        #class-table tbody tr:hover td { background-color: #f8f9fa; }
+        
+        .mini-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            color: white;
+            font-weight: 600;
+            font-size: 0.75rem;
+            margin-right: 3px;
+            white-space: nowrap;
+        }
+        .period-badge {
+            background: rgba(0,0,0,0.2);
+            padding: 0 4px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div>
+        <h3><span class="step-tag">Step 0</span> 학급 수 설정</h3>
+        <div class="config-box" id="config-box-ui">
+            <div class="class-count-grid">
+                <div class="class-count-item"><span>1학년</span><input type="number" id="cc-1" class="cc-input" value="2"></div>
+                <div class="class-count-item"><span>2학년</span><input type="number" id="cc-2" class="cc-input" value="2"></div>
+                <div class="class-count-item"><span>3학년</span><input type="number" id="cc-3" class="cc-input" value="2"></div>
+                <div class="class-count-item"><span>4학년</span><input type="number" id="cc-4" class="cc-input" value="2"></div>
+                <div class="class-count-item"><span>5학년</span><input type="number" id="cc-5" class="cc-input" value="2"></div>
+                <div class="class-count-item"><span>6학년</span><input type="number" id="cc-6" class="cc-input" value="2"></div>
+            </div>
+            <button id="btn-config-lock" class="btn-lock save-mode" onclick="toggleConfigLock()">💾 학급 수 저장</button>
+        </div>
+    </div>
+    <div class="divider"></div>
+
+    <div>
+        <h3><span class="step-tag">Step 1</span> 과목 및 요일 설정</h3>
+        <div id="subject-list" class="subject-list"></div>
+        <div class="add-subject-box">
+            <div class="input-row">
+                <input type="text" id="new-sub-name" placeholder="과목명 입력 (예: 국악, 연극)">
+                <input type="color" id="new-sub-color" value="#4b6cb7">
+            </div>
+            
+            <div class="global-day-box">
+                <span class="global-label">수업 요일</span>
+                <div class="global-day-group" id="global-day-controls"></div>
+            </div>
+
+            <div class="semester-control">
+                <select id="semester-select" class="semester-select" onchange="changeSemester()">
+                    <option value="1">1학기</option>
+                    <option value="2">2학기 (개학일 설정 가능)</option>
+                </select>
+                <div id="sem2-date-row" class="date-picker-row">
+                    <span>개학일:</span>
+                    <input type="date" id="sem2-start-date" value="2026-08-17" onchange="updateSem2Date()" style="border:1px solid #ccc; border-radius:3px;">
+                </div>
+                <button id="btn-copy-sem1" class="btn-copy" style="display:none;" onclick="copySemester1To2()">📥 1학기 시간표 그대로 가져오기</button>
+            </div>
+
+            <div style="font-size:0.8rem; margin-bottom:5px; font-weight:bold; color:#333;">
+                <span>수업 차시 / 학년별 요일 (미입력=0)</span>
+            </div>
+            
+            <div id="target-container" class="target-list"></div>
+            
+            <button class="btn-save-sub" onclick="saveSubject()">💾 과목 저장</button>
+            <button class="btn-new" onclick="initNewSubject()">🔄 새 과목 입력하기</button>
+        </div>
+    </div>
+    <div class="divider"></div>
+
+    <div>
+        <h3><span class="step-tag">Step 2</span> 배정 실행</h3>
+        <button class="btn-big-auto" onclick="runSequentialSchedule()">전체 학년 자동 배정</button>
+        <button class="btn-open-popup" onclick="openClassModal()">반별 시간표 보기</button>
+    </div>
+
+    <div class="footer-actions">
+        <button class="btn-save" onclick="exportToExcel()">엑셀 저장</button>
+        <button class="btn-reset" onclick="resetAll()">초기화</button>
+    </div>
+</div>
+
+<div class="main" onclick="hideContextMenu()">
+    <div style="padding:15px 25px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+        <h2 id="header-title" style="margin:0; font-size:1.2rem;">스마트 수업 매니저</h2>
+        <span style="font-size:0.85rem; color:#888;">* 1~4교시 우선 배정 (5,6교시 수동 추가 가능)</span>
+    </div>
+    <div class="grid-container">
+        <table id="master-table"></table>
+    </div>
+</div>
+
+<div id="context-menu">
+    <div class="ctx-item" onclick="ctxEdit()">📝 반 변경</div>
+    <div class="ctx-item" onclick="ctxDelete()">🗑️ 삭제</div>
+</div>
+
+<div id="classModal" class="modal-overlay">
+    <div class="modal-window">
+        <div class="modal-header">
+            <strong>🏫 반별 시간표 확인</strong>
+            <button class="btn-close" onclick="closeClassModal()">닫기 ✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-sidebar">
+                <div>
+                    <div class="modal-section-title">GRADE</div>
+                    <div id="modal-grade-list" class="grade-grid"></div>
+                </div>
+                <div>
+                    <div class="modal-section-title">CLASS</div>
+                    <div id="modal-class-list" class="class-grid"></div>
+                </div>
+            </div>
+            <div class="modal-content">
+                <div class="modal-content-title" id="modal-title"></div>
+                <div class="class-table-wrapper">
+                    <table id="class-table"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const TOTAL_WEEKS = 22; 
+    const PALETTE = [
+        "#5c7cfa", "#38d9a9", "#ff8787", "#fcc419", "#cc5de8", "#4dabf7", 
+        "#ff922b", "#94d82d", "#f06595", "#20c997", "#868e96", "#66d9e8"
+    ];
+    const DAYS_LABEL = ['월', '화', '수', '목', '금'];
+    let colorIdx = 0;
+
+    let db = { 1: {}, 2: {} }; 
+    let config = { classes: {1:2, 2:2, 3:2, 4:2, 5:2, 6:2}, subjects: {}, isLocked: false };
+    let currentSemester = 1; 
+    let sem2StartDate = "2026-08-17"; 
+
+    let currentSubject = null; 
+    let ctxTarget = null;
+
+    let tempDays = { 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
+    let tempTargets = { 1:'', 2:'', 3:'', 4:'', 5:'', 6:'' };
+    let globalDays = []; 
+
+    window.onload = () => {
+        loadData();
+        initNewSubject();
+        renderSidebar();
+        renderMasterTable();
+        
+        document.getElementById('semester-select').value = currentSemester;
+        document.getElementById('sem2-start-date').value = sem2StartDate;
+        toggleSem2UI();
+        applyConfigLockState();
+    };
+
+    function changeSemester() {
+        const val = document.getElementById('semester-select').value;
+        currentSemester = parseInt(val);
+        toggleSem2UI();
+        renderMasterTable(); 
+    }
+
+    function toggleSem2UI() {
+        const dateRow = document.getElementById('sem2-date-row');
+        const copyBtn = document.getElementById('btn-copy-sem1');
+        
+        if (currentSemester === 2) {
+            dateRow.classList.add('active');
+            copyBtn.style.display = 'block'; 
+        } else {
+            dateRow.classList.remove('active');
+            copyBtn.style.display = 'none';
+        }
+    }
+
+    function updateSem2Date() {
+        sem2StartDate = document.getElementById('sem2-start-date').value;
+        saveData();
+        renderMasterTable();
+    }
+
+    function copySemester1To2() {
+        if(!confirm("1학기 시간표를 2학기로 복사하시겠습니까?\n(기존 2학기 데이터는 덮어씌워집니다.)")) return;
+        db[2] = JSON.parse(JSON.stringify(db[1]));
+        saveData();
+        renderMasterTable();
+        alert("1학기 시간표를 가져왔습니다.");
+    }
+
+    function renderGlobalDayControls() {
+        const container = document.getElementById('global-day-controls');
+        container.innerHTML = '';
+        DAYS_LABEL.forEach((label, idx) => {
+            const btn = document.createElement('div');
+            btn.className = `g-day-btn ${globalDays.includes(idx) ? 'selected' : ''}`;
+            btn.innerText = label;
+            btn.onclick = () => toggleGlobalDay(idx);
+            container.appendChild(btn);
+        });
+    }
+
+    function toggleGlobalDay(dayIdx) {
+        if(globalDays.includes(dayIdx)) {
+            globalDays = globalDays.filter(d => d !== dayIdx);
+            for(let g=1; g<=6; g++) {
+                tempDays[g] = tempDays[g].filter(d => d !== dayIdx);
+            }
+        } else {
+            globalDays.push(dayIdx);
+            for(let g=1; g<=6; g++) {
+                if(!tempDays[g].includes(dayIdx)) {
+                    tempDays[g].push(dayIdx);
+                    tempDays[g].sort();
+                }
+            }
+        }
+        renderGlobalDayControls();
+        renderInputRows(); 
+    }
+
+    function renderInputRows() {
+        const container = document.getElementById('target-container');
+        container.innerHTML = '';
+        for(let g=1; g<=6; g++) {
+            const row = document.createElement('div');
+            row.className = 'target-row';
+            
+            const label = document.createElement('span');
+            label.className = 'target-label';
+            label.innerText = g + '학년';
+            
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.id = `tg-${g}`;
+            input.className = 'target-input';
+            input.placeholder = '차시';
+            input.min = "0"; 
+            input.value = tempTargets[g]; 
+            
+            input.oninput = (e) => { 
+                let val = e.target.value;
+                if(val !== '' && val < 0) {
+                    val = 0;
+                    e.target.value = 0;
+                }
+                tempTargets[g] = val; 
+            };
+
+            const dayGroup = document.createElement('div');
+            dayGroup.className = 'day-group';
+            
+            DAYS_LABEL.forEach((dLabel, dIdx) => {
+                const btn = document.createElement('div');
+                const isSelected = tempDays[g].includes(dIdx);
+                const isGloballyAllowed = globalDays.includes(dIdx);
+                
+                let btnClass = 'day-btn';
+                if (!isGloballyAllowed) {
+                    btnClass += ' disabled';
+                } else if (isSelected) {
+                    btnClass += ' selected';
+                }
+
+                btn.className = btnClass;
+                btn.innerText = dLabel;
+                
+                if(isGloballyAllowed) {
+                    btn.onclick = () => toggleDay(g, dIdx);
+                }
+                
+                dayGroup.appendChild(btn);
+            });
+
+            row.appendChild(label);
+            row.appendChild(input);
+            row.appendChild(dayGroup);
+            container.appendChild(row);
+        }
+    }
+
+    function toggleDay(grade, dayIdx) {
+        const idx = tempDays[grade].indexOf(dayIdx);
+        if(idx > -1) {
+            tempDays[grade].splice(idx, 1);
+        } else {
+            tempDays[grade].push(dayIdx);
+            tempDays[grade].sort();
+        }
+        renderInputRows(); 
+    }
+
+    function toggleConfigLock() {
+        if (!config.isLocked) {
+            for(let i=1; i<=6; i++) {
+                config.classes[i] = parseInt(document.getElementById(`cc-${i}`).value) || 1;
+            }
+            config.isLocked = true;
+        } else {
+            config.isLocked = false;
+        }
+        saveData();
+        applyConfigLockState();
+    }
+
+    function applyConfigLockState() {
+        const box = document.getElementById('config-box-ui');
+        const btn = document.getElementById('btn-config-lock');
+        const inputs = document.querySelectorAll('.cc-input');
+
+        if (config.isLocked) {
+            box.classList.add('locked');
+            inputs.forEach(input => input.disabled = true);
+            btn.innerText = "🔓 학급 수 수정하기";
+            btn.classList.remove('save-mode');
+            btn.classList.add('edit-mode');
+        } else {
+            box.classList.remove('locked');
+            inputs.forEach(input => input.disabled = false);
+            btn.innerText = "💾 학급 수 저장";
+            btn.classList.remove('edit-mode');
+            btn.classList.add('save-mode');
+        }
+    }
+
+    function initNewSubject() {
+        currentSubject = null;
+        tempTargets = { 1:'', 2:'', 3:'', 4:'', 5:'', 6:'' };
+        tempDays = { 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
+        globalDays = []; 
+        
+        document.getElementById('new-sub-name').value = '';
+        document.getElementById('new-sub-color').value = PALETTE[colorIdx++ % PALETTE.length];
+        
+        renderGlobalDayControls();
+        renderInputRows();
+        renderSidebar(); 
+        
+        const table = document.getElementById('master-table');
+        const title = document.getElementById('header-title');
+        title.innerHTML = "스마트 수업 매니저";
+        table.innerHTML = "<tr><td colspan='30' style='padding:50px; color:#888;'>왼쪽에서 과목을 선택하거나<br>새 과목을 입력하고 저장하세요.</td></tr>";
+    }
+
+    function selectSubject(key) {
+        currentSubject = key;
+        const sub = config.subjects[key];
+        
+        document.getElementById('new-sub-name').value = sub.name;
+        document.getElementById('new-sub-color').value = sub.color;
+        
+        tempTargets = {};
+        tempDays = {};
+        
+        for(let i=1; i<=6; i++) {
+            tempTargets[i] = sub.targets[i] ? sub.targets[i] : '';
+            tempDays[i] = sub.weekdays[i] ? [...sub.weekdays[i]] : [];
+        }
+        
+        let collectedDays = new Set();
+        for(let i=1; i<=6; i++) {
+            if(tempDays[i]) tempDays[i].forEach(d => collectedDays.add(d));
+        }
+        globalDays = Array.from(collectedDays).sort();
+
+        renderGlobalDayControls();
+        renderInputRows();
+        renderSidebar();
+        renderMasterTable();
+    }
+
+    function saveSubject(isSilent = false) {
+        const name = document.getElementById('new-sub-name').value;
+        const color = document.getElementById('new-sub-color').value;
+        if(!name) return alert("과목명을 입력하세요");
+        
+        let targets = {};
+        let weekdays = {}; 
+        let hasWeekdays = false;
+
+        for(let i=1; i<=6; i++) {
+            targets[i] = parseInt(tempTargets[i]) || 0; 
+            weekdays[i] = [...tempDays[i]];
+            if(weekdays[i].length > 0) hasWeekdays = true;
+        }
+
+        if(!hasWeekdays) {
+            if(!confirm("선택된 요일이 하나도 없습니다. 그래도 저장하시겠습니까?")) return;
+        }
+
+        let id = currentSubject;
+        if (!id) {
+            id = 'sub_' + Date.now();
+            currentSubject = id; 
+        }
+
+        config.subjects[id] = { name, color, targets, weekdays };
+        saveData();
+        renderSidebar();
+        renderMasterTable();
+        
+        if (!isSilent) {
+            alert("저장되었습니다.");
+        }
+    }
+
+    function renderSidebar() {
+        const list = document.getElementById('subject-list');
+        list.innerHTML = '';
+        Object.keys(config.subjects).forEach(key => {
+            const sub = config.subjects[key];
+            const div = document.createElement('div');
+            div.className = `subject-item ${currentSubject === key ? 'active' : ''}`;
+            div.onclick = () => selectSubject(key);
+            div.innerHTML = `<div><span class="color-dot" style="background:${sub.color}"></span><b>${sub.name}</b></div>
+                             <button style="border:none; background:none; color:#888; cursor:pointer;" onclick="deleteSubject('${key}', event)">x</button>`;
+            list.appendChild(div);
+        });
+        for(let i=1; i<=6; i++) {
+             const el = document.getElementById(`cc-${i}`);
+             if(el) el.value = config.classes[i];
+        }
+    }
+
+    function deleteSubject(key, e) {
+        e.stopPropagation();
+        if(confirm("정말 삭제하시겠습니까?")) {
+            delete config.subjects[key];
+            for(let sem in db) {
+                for(let c in db[sem]) {
+                    for(let t in db[sem][c]) {
+                        if(db[sem][c][t] === key) delete db[sem][c][t];
+                    }
+                }
+            }
+            
+            if(currentSubject === key) initNewSubject();
+            else renderSidebar();
+            saveData();
+        }
+    }
+
+    function runSequentialSchedule() {
+        if(!currentSubject) return alert("먼저 과목을 선택하거나 저장해주세요.");
+        
+        saveSubject(true); 
+        
+        const sub = config.subjects[currentSubject];
+        const startWeekInput = prompt(`[${sub.name}] 배정 시작 주차를 입력하세요.`, "1");
+        if(startWeekInput === null) return;
+        const startWeek = parseInt(startWeekInput);
+        if(isNaN(startWeek) || startWeek < 1 || startWeek > TOTAL_WEEKS) return alert("올바른 주차를 입력하세요.");
+
+        let currentDB = db[currentSemester];
+        for(let c in currentDB) {
+            for(let t in currentDB[c]) if(currentDB[c][t] === currentSubject) delete currentDB[c][t];
+        }
+
+        let slotTracker = Array.from({ length: 5 }, () => Array(7).fill(startWeek)); 
+
+        for(let g=6; g>=1; g--) {
+            const duration = sub.targets[g]; 
+            const allowedDays = sub.weekdays[g];
+
+            if(!duration || duration === 0) continue;
+            if(!allowedDays || allowedDays.length === 0) continue;
+
+            const classCount = config.classes[g];
+            for(let c=1; c<=classCount; c++) {
+                let bestSlot = null;
+                let bestScore = Infinity;
+                const classKey = `${g}-${c}`;
+
+                for(let d=0; d<5; d++) {
+                    if(allowedDays.includes(d)) {
+                        for(let p=1; p<=4; p++) {
+                            let proposedStartW = slotTracker[d][p];
+                            let isConflict = true;
+
+                            while(proposedStartW <= TOTAL_WEEKS) {
+                                isConflict = false;
+                                for(let k=0; k<duration; k++) {
+                                    const checkW = proposedStartW + k;
+                                    if(checkW > TOTAL_WEEKS) { isConflict=true; break; }
+                                    const timeKey = `${checkW}-${d}-${p}`;
+                                    if(currentDB[classKey] && currentDB[classKey][timeKey]) {
+                                        isConflict = true;
+                                        break;
+                                    }
+                                }
+                                if(!isConflict) break; 
+                                proposedStartW++; 
+                            }
+
+                            if(proposedStartW <= TOTAL_WEEKS) {
+                                const score = (proposedStartW * 1000) + (d * 100) + p;
+                                if(score < bestScore) {
+                                    bestScore = score;
+                                    bestSlot = {d, p, startW: proposedStartW};
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if(bestSlot) {
+                    const {d, p, startW} = bestSlot;
+                    const endW = startW + duration - 1;
+                    if(!currentDB[classKey]) currentDB[classKey] = {};
+                    
+                    for(let w=startW; w<=endW; w++) {
+                        if(w <= TOTAL_WEEKS) currentDB[classKey][`${w}-${d}-${p}`] = currentSubject;
+                    }
+                    if(endW + 1 > slotTracker[d][p]) {
+                         slotTracker[d][p] = endW + 1;
+                    }
+                }
+            }
+        }
+        saveData();
+        renderMasterTable();
+        alert(`${startWeek}주차부터 배정 완료!`);
+    }
+
+    function renderMasterTable() {
+        const table = document.getElementById('master-table');
+        const title = document.getElementById('header-title');
+        
+        if(!currentSubject || !config.subjects[currentSubject]) {
+            title.innerHTML = "스마트 수업 매니저";
+            table.innerHTML = "<tr><td colspan='30' style='padding:50px; color:#888;'>왼쪽에서 과목을 선택하거나<br>새 과목을 입력하고 저장하세요.</td></tr>";
+            return;
+        }
+        const sub = config.subjects[currentSubject];
+        
+        let termText = "";
+        if(currentSemester === 1) termText = "(3월~7월)";
+        else {
+            const d = new Date(sem2StartDate);
+            termText = `(${d.getMonth()+1}월~12월)`;
+        }
+        
+        title.innerHTML = `[${sub.name}] ${currentSemester}학기 시간표 <small style='color:#666; font-weight:normal;'>${termText}</small>`;
+
+        let html = `<thead><tr><th rowspan="2">주/기간</th>`;
+        ['월','화','수','목','금'].forEach(d => html += `<th colspan="6">${d}</th>`);
+        html += `</tr><tr>`;
+        for(let i=0; i<5; i++) for(let j=1; j<=6; j++) {
+            html += `<th style="background:#fff; font-size:0.75rem;">${j}</th>`;
+        }
+        html += `</tr></thead><tbody>`;
+
+        let currentDB = db[currentSemester];
+
+        for(let w=1; w<=TOTAL_WEEKS; w++) {
+            html += `<tr><td>${w}주<br><span style="font-weight:normal;color:#999;font-size:0.7rem">${getDateString(w)}</span></td>`;
+            for(let d=0; d<5; d++) {
+                for(let p=1; p<=6; p++) {
+                    const timeKey = `${w}-${d}-${p}`;
+                    let assigned = null;
+                    let assignedSubjectId = null;
+
+                    for(let c in currentDB) {
+                        if(currentDB[c][timeKey]) {
+                            if(currentDB[c][timeKey] === currentSubject) {
+                                assigned = c;
+                                assignedSubjectId = currentSubject;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if(assigned) {
+                        html += `<td style="background:${sub.color};">
+                            <div class="master-cell" onclick="showContextMenu(event, '${timeKey}', '${assigned}')">
+                                ${assigned}
+                            </div>
+                        </td>`;
+                    } else {
+                        html += `<td class="empty-cell" onclick="manualAddClass('${timeKey}')" title="직접 추가"></td>`;
+                    }
+                }
+            }
+            html += `</tr>`;
+        }
+        table.innerHTML = html;
+    }
+
+    function manualAddClass(timeKey) {
+        if(!currentSubject) return;
+        const input = prompt("추가할 학급을 입력해주세요. 예: 1-1");
+        if(!input) return;
+        const [g, c] = input.split('-');
+        if(!g || !c || !config.classes[g] || c > config.classes[g]) return alert("잘못된 반 정보");
+        
+        const classKey = `${g}-${c}`;
+        let currentDB = db[currentSemester];
+        
+        if(currentDB[classKey] && currentDB[classKey][timeKey]) {
+            const existSubId = currentDB[classKey][timeKey];
+            const existSubName = config.subjects[existSubId].name;
+            if(!confirm(`이미 [${existSubName}] 수업이 있습니다. 덮어쓰시겠습니까?`)) return;
+        }
+
+        if(!currentDB[classKey]) currentDB[classKey] = {};
+        currentDB[classKey][timeKey] = currentSubject;
+        
+        saveData();
+        renderMasterTable();
+    }
+
+    function getDateString(w) {
+        let s;
+        if (currentSemester === 1) {
+            s = new Date(2026, 2, 2); 
+        } else {
+            let inputDate = new Date(sem2StartDate);
+            let day = inputDate.getDay();
+            let diff = (day === 0 ? -6 : 1) - day;
+            inputDate.setDate(inputDate.getDate() + diff);
+            s = inputDate;
+        }
+        
+        s.setDate(s.getDate() + (w-1)*7);
+        let e = new Date(s); 
+        e.setDate(e.getDate() + 4);
+        return `${s.getMonth()+1}.${s.getDate()}~${e.getMonth()+1}.${e.getDate()}`;
+    }
+
+    function showContextMenu(e, timeKey, currentClass) {
+        e.stopPropagation();
+        const menu = document.getElementById('context-menu');
+        menu.style.display = 'block';
+        menu.style.left = e.pageX + 'px';
+        menu.style.top = e.pageY + 'px';
+        ctxTarget = { timeKey, currentClass };
+    }
+    function hideContextMenu() { document.getElementById('context-menu').style.display = 'none'; }
+
+    function ctxEdit() {
+        if(!ctxTarget) return;
+        const newClass = prompt("변경할 학급을 입력해주세요. (예: 1-1)", ctxTarget.currentClass);
+        if(newClass && newClass !== ctxTarget.currentClass) {
+            const [g, c] = newClass.split('-');
+            if(!config.classes[g] || c > config.classes[g]) return alert("반 정보 오류");
+            
+            let currentDB = db[currentSemester];
+            
+            if(currentDB[newClass] && currentDB[newClass][ctxTarget.timeKey]) {
+                if(!confirm("이동하려는 반에 이미 수업이 있습니다. 덮어쓰시겠습니까?")) return;
+            }
+
+            delete currentDB[ctxTarget.currentClass][ctxTarget.timeKey];
+            if(!currentDB[newClass]) currentDB[newClass] = {};
+            currentDB[newClass][ctxTarget.timeKey] = currentSubject;
+            saveData();
+            renderMasterTable();
+        }
+        hideContextMenu();
+    }
+    function ctxDelete() {
+        if(confirm("삭제하시겠습니까?")) {
+            let currentDB = db[currentSemester];
+            delete currentDB[ctxTarget.currentClass][ctxTarget.timeKey];
+            saveData();
+            renderMasterTable();
+        }
+        hideContextMenu();
+    }
+
+    function saveData() { 
+        localStorage.setItem('smart_timetable_v28_final', JSON.stringify({db, config, currentSemester, sem2StartDate})); 
+    }
+    function loadData() {
+        const d = JSON.parse(localStorage.getItem('smart_timetable_v28_final'));
+        if(d) { 
+            if(d.db && !d.db[1]) {
+                db = { 1: d.db, 2: {} };
+            } else {
+                db = d.db || { 1: {}, 2: {} };
+            }
+            config = d.config || config;
+            currentSemester = d.currentSemester || 1;
+            sem2StartDate = d.sem2StartDate || "2026-08-17";
+        }
+    }
+    function resetAll() {
+        if(confirm("초기화 하시겠습니까?")) {
+            localStorage.removeItem('smart_timetable_v28_final');
+            location.reload();
+        }
+    }
+
+    function exportToExcel() {
+        if(!currentSubject) return alert("과목을 선택해주세요.");
+        const sub = config.subjects[currentSubject];
+        let currentDB = db[currentSemester];
+        
+        let html = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+        <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
+        </head>
+        <body>
+        <table border="1" style="text-align:center;">
+            <thead>
+                <tr>
+                    <th rowspan="2" style="background-color:#f8f9fa;">주차</th>
+                    <th rowspan="2" style="background-color:#f8f9fa;">기간</th>`;
+        
+        ['월','화','수','목','금'].forEach(d => {
+            html += `<th colspan="6" style="background-color:#e9ecef;">${d}</th>`;
+        });
+        
+        html += `</tr><tr>`;
+        for(let i=0; i<5; i++) for(let j=1; j<=6; j++) {
+            html += `<th style="background-color:#f1f3f5;">${j}</th>`;
+        }
+        html += `</tr></thead><tbody>`;
+
+        for(let w=1; w<=TOTAL_WEEKS; w++) {
+            html += `<tr>
+                <td style="mso-number-format:'\@';">${w}주</td>
+                <td style="mso-number-format:'\@';">${getDateString(w)}</td>`;
+            for(let d=0; d<5; d++) {
+                for(let p=1; p<=6; p++) {
+                    const timeKey = `${w}-${d}-${p}`;
+                    let assigned = "";
+                    for(let c in currentDB) {
+                        if(currentDB[c][timeKey] === currentSubject) {
+                            assigned = c;
+                            break;
+                        }
+                    }
+                    let style = assigned ? `background-color:${sub.color}; color:white; font-weight:bold;` : "";
+                    html += `<td style="${style} mso-number-format:'\@';">${assigned}</td>`;
+                }
+            }
+            html += `</tr>`;
+        }
+        html += `</tbody></table></body></html>`;
+
+        const blob = new Blob([html], {type: "application/vnd.ms-excel"});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `전담시간표_${currentSemester}학기_${sub.name}.xls`;
+        a.click();
+    }
+    
+    // Modal Control & Render
+    let modalGrade = 1;
+    let modalClass = 1;
+
+    function openClassModal() {
+        document.getElementById('classModal').style.display = 'flex';
+        modalGrade = 1; 
+        modalClass = 1;
+        renderModalGradeList();
+    }
+    function closeClassModal() {
+        document.getElementById('classModal').style.display = 'none';
+        renderMasterTable();
+    }
+
+    function renderModalGradeList() {
+        const gl = document.getElementById('modal-grade-list');
+        gl.innerHTML = '';
+        for(let i=1; i<=6; i++) {
+            const btn = document.createElement('div');
+            btn.className = `selector-btn ${modalGrade === i ? 'active' : ''}`;
+            btn.innerText = i + '학년';
+            btn.onclick = () => { 
+                modalGrade = i; 
+                modalClass = 1; 
+                renderModalGradeList(); 
+            };
+            gl.appendChild(btn);
+        }
+        renderModalClassList();
+    }
+
+    function renderModalClassList() {
+        const cl = document.getElementById('modal-class-list');
+        cl.innerHTML = '';
+        const cnt = config.classes[modalGrade];
+        
+        for(let j=1; j<=cnt; j++) {
+            const btn = document.createElement('div');
+            btn.className = `class-btn ${modalClass === j ? 'active' : ''}`;
+            btn.innerText = j;
+            btn.onclick = () => { 
+                modalClass = j;
+                renderModalClassList(); 
+            };
+            cl.appendChild(btn);
+        }
+        renderModalTable(modalGrade, modalClass);
+    }
+
+    function renderModalTable(g, c) {
+        document.getElementById('modal-title').innerHTML = `
+            ${g}학년 ${c}반 
+            <span>${currentSemester}학기</span>
+        `;
+        
+        const tbl = document.getElementById('class-table');
+        const cKey = `${g}-${c}`;
+        const schedule = db[currentSemester][cKey] || {}; 
+        
+        // [수정] 모달 테이블: 헤더 고정, 셀 높이 축소, 글자 크기 축소
+        let html = `<thead><tr><th style="width:30px; text-align:center;">주</th>`;
+        ['월','화','수','목','금'].forEach(d=>html+=`<th>${d}</th>`);
+        html+=`</tr></thead><tbody>`;
+        
+        for(let w=1; w<=TOTAL_WEEKS; w++) {
+            html += `<tr><td style="text-align:center; font-weight:bold; color:#868e96; font-size:0.7rem; background:#fff;">${w}</td>`;
+            for(let d=0; d<5; d++) {
+                html += `<td>`;
+                let dayContent = [];
+                for(let p=1; p<=6; p++) { 
+                    const tKey = `${w}-${d}-${p}`;
+                    if(schedule[tKey]) {
+                        const s = config.subjects[schedule[tKey]];
+                        if(s) {
+                            // [수정] 더 컴팩트한 디자인
+                            dayContent.push(`<div class="mini-chip" style="background:${s.color}">
+                                <span class="period-badge">${p}</span>
+                                <span>${s.name}</span>
+                            </div>`);
+                        }
+                    }
+                }
+                html += dayContent.join('');
+                html += `</td>`;
+            }
+            html += `</tr>`;
+        }
+        tbl.innerHTML = html;
+    }
+</script>
+</body>
+</html>
